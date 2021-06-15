@@ -6,7 +6,9 @@
 #include <string.h>
 #include <time.h>
 
+double LLRUpperHardwareFriendly(double llr_upper, double llr_lower);
 double LLRUpper(double llr_upper, double llr_lower);
+double LLRUpperMaxStar(double llr_upper, double llr_lower);
 double LLRLower(double llr_upper, double llr_lower, int u);
 void recursive_caluelation(int code_size,double* channel_llr, int* decoded_code, int* encode_assume);
 void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume);
@@ -87,13 +89,14 @@ void PrintLLR(double* llr, int channel_size){
     }
     printf("\n");
 }
-/*
+
 double LLRUpper(double llr_upper, double llr_lower){
-    return log(exp(llr_upper+llr_lower)+1) - log(exp(llr_upper)+exp(llr_lower));
-}*/
-// double LLRUpper(double llr_upper, double llr_lower){
-//     return log(exp((llr_upper+llr_lower)+1)/(exp(llr_upper)+exp(llr_lower)));
-// }
+    return log((exp(llr_upper+llr_lower)+1)/(exp(llr_upper)+exp(llr_lower)));
+}
+
+double LLRUpperMaxStar(double llr_upper, double llr_lower){
+    fmax(0, llr_lower+llr_upper) - fmax(llr_upper, llr_lower) + log(1 + exp(-fabs(llr_lower + llr_upper))) - log(1+exp(-abs(llr_upper-llr_lower)));
+}
 
 void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value){
     for (int i = 0; i < code_size; i++)
@@ -106,7 +109,7 @@ void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_si
     }  
 }
 
-double LLRUpper(double llr_upper, double llr_lower){
+double LLRUpperHardwareFriendly(double llr_upper, double llr_lower){
     int signa = (llr_upper > 0 ? 1 : -1);
     int signb = (llr_lower > 0 ? 1 : -1);
     if (signa == signb)
