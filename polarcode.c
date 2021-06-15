@@ -9,11 +9,13 @@
 double LLRUpper(double llr_upper, double llr_lower);
 double LLRLower(double llr_upper, double llr_lower, int u);
 void recursive_caluelation(int code_size,double* channel_llr, int* decoded_code, int* encode_assume);
-void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* encode_assume);
+void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume);
 void PolarEncoder(int* code, int code_size, int* encoded);
 void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double SNR);
 void PrintCode(int* code, int code_size);
 void PrintLLR(double* llr, int channel_size);
+void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value);
+void shuffle(int *array, size_t n);
 
 int main(int argc, char const *argv[])
 {   
@@ -24,6 +26,9 @@ int main(int argc, char const *argv[])
     int encode_assume[code_size];
     double channel_llr[code_size];
     int show = 0;
+    int frozen_index[code_size];
+    int frozen_size;
+    int frozen_value[code_size];
     // for (int i = 0; i < code_size; i++)
     // {
     //     code[i] = atoi(argv[2+i]);
@@ -44,12 +49,27 @@ int main(int argc, char const *argv[])
     {   
         printf("\n\nencode:");
         PrintCode(encode, code_size);
-    }   
+    }
+
+    //set frozen bits
+    for (int i = 0; i < code_size; i++)
+    {
+        frozen_index[i] = i;
+    }
+    shuffle(frozen_index, code_size);
+    frozen_size = code_size/2;
+    for (int i = 0; i < code_size; i++)
+    {
+        frozen_value[i] = 1;
+    }
+    printf("frozen index:");
+    PrintCode(frozen_index, frozen_size);
+    SetFrozenBits(code, code_size, frozen_index, frozen_size, frozen_value);
 
     Code2LLRWithSNR(encode, channel_llr, code_size, -1);
     PrintLLR(channel_llr, code_size);
 
-    SC_decoder(code_size, decoded, channel_llr, encode_assume);
+    SC_decoder(code_size, decoded, channel_llr, frozen_index, frozen_size, frozen_value, encode_assume);
     
     printf("decoded:");
     PrintCode(decoded, code_size);
@@ -74,6 +94,17 @@ double LLRUpper(double llr_upper, double llr_lower){
 // double LLRUpper(double llr_upper, double llr_lower){
 //     return log(exp((llr_upper+llr_lower)+1)/(exp(llr_upper)+exp(llr_lower)));
 // }
+
+void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value){
+    for (int i = 0; i < code_size; i++)
+    {
+        decoded[i] = -1;
+    }
+    for (int i = 0; i < frozen_size; i++)
+    {
+        decoded[frozen_index[i]] = frozen_value[i];
+    }  
+}
 
 double LLRUpper(double llr_upper, double llr_lower){
     int signa = (llr_upper > 0 ? 1 : -1);
@@ -118,7 +149,10 @@ void recursive_caluelation(int code_size, double* channel_llr, int* decoded_code
     int sub_channel_size = code_size/2;
     if(code_size == 1)
     { 
-        decoded_code[0] = HardDecisionWithLLR(channel_llr[0]);
+        if (decoded_code[0] == -1) //unfrozen bit
+        {
+            decoded_code[0] = HardDecisionWithLLR(channel_llr[0]);
+        }
         encode_assume[0] = decoded_code[0];
         PrintLLR(channel_llr, code_size);
         return;
@@ -151,7 +185,8 @@ void recursive_caluelation(int code_size, double* channel_llr, int* decoded_code
     
 }
 
-void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* encode_assume){
+void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume){
+    SetFrozenBits(decoded_code, code_size, frozen_index, frozen_size, frozen_value);
     recursive_caluelation(code_size, channel_llr, decoded_code, encode_assume);
     return;
 }
@@ -251,4 +286,23 @@ void PrintCode(int* code, int code_size){
     }
     printf("\n");
     return;
+}
+
+/* Arrange the N elements of ARRAY in random order.
+   Only effective if N is much smaller than RAND_MAX;
+   if this may not be the case, use a better random
+   number generator. */
+void shuffle(int *array, size_t n)
+{
+    if (n > 1) 
+    {
+        size_t i;
+        for (i = 0; i < n - 1; i++) 
+        {
+          size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+          int t = array[j];
+          array[j] = array[i];
+          array[i] = t;
+        }
+    }
 }
