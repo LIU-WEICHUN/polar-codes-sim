@@ -235,7 +235,7 @@ void AWGNC(double* tx, int tx_size, double* rx, double snr){
     T = gsl_rng_default;
     r = gsl_rng_alloc (T);
     gsl_rng_set(r, time(0));
-    double sigma = sqrt(0.5 / snr);
+    double sigma = sqrt(snr);
     for (int i = 0; i < tx_size; i++)
     {
         rx[i] = tx[i] + gsl_ran_gaussian(r, sigma);
@@ -246,7 +246,7 @@ void AWGNC(double* tx, int tx_size, double* rx, double snr){
 void tx2LlrForBpsk(double* rx, int rx_size, double* channel_llr, double snr){
     for (int i = 0; i < rx_size; i++)
     {
-        channel_llr[i] = 4*rx[i]*snr;
+        channel_llr[i] = 2*rx[i]*snr;
     }
     return;
     
