@@ -42,12 +42,12 @@ void AWGNC(double* tx, int tx_size, double* rx, double snr){
     T = gsl_rng_default;
     r = gsl_rng_alloc (T);
     gsl_rng_set(r, time(0));
-    double sigma = sqrt(snr);
+    double sigma = sqrt(1/snr);
     for (int i = 0; i < tx_size; i++)
     {
         rx[i] = tx[i] + gsl_ran_gaussian(r, sigma);
     }
-    printDoubleArray(rx, tx_size);
+    // printDoubleArray(rx, tx_size);
     return;
     
 }
@@ -87,6 +87,7 @@ void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr
         tx_size = mapping(encode , code_size, tx);
         AWGNC(tx, tx_size, rx, snr);
         tx2LlrForBpsk(rx, code_size, channel_llr, snr);
+        printf("snr = %lf, llr = %lf\n", snr, channel_llr[0]);
     }
     
 }
@@ -158,32 +159,35 @@ void outputPythonPlotFile(double* x, double* y, int size){
 
 int main(int argc, char const *argv[])
 {
-    int sample = 1000;
-    double x_dB[sample];
-    double x[sample];
-    double channel_llr[sample];
-    int code[sample];
-    double y[sample];
-    double capacity[sample];
-    for (int i = 0; i < sample; i++)
+    int sample_snr = 1000;
+    int sample_llr = 100000;
+    double x_dB[sample_snr];
+    double x[sample_snr];
+    double channel_llr[sample_llr];
+    int code[sample_llr];
+    double information[sample_llr];
+    double capacity[sample_snr];
+    for (int i = 0; i < sample_llr; i++)
     {
         code[i] = 0;
     }
 
-    linspace(x_dB, -20, 10, sample);
+    linspace(x_dB, -20, 10, sample_snr);
     // printDoubleArray(x_dB, sample);
-    dB2Linear(x_dB, x, sample);
-    for (int i = 0; i < sample; i++)
+    dB2Linear(x_dB, x, sample_snr);
+    for (int i = 0; i < sample_snr; i++)
     {
-        Code2LLRWithSNR(code, channel_llr, sample, x[i]);
-        y[i] = expectation(channel_llr, sample);
+        Code2LLRWithSNR(code, channel_llr, sample_llr, x[i]);
+        for (int j = 0; j < sample_llr; j++)
+        {
+            information[j] = log2(1+exp(-channel_llr[j]));
+        }
+        // printDoubleArray(information, 5);
+        capacity[i] = 1 - expectation(information, sample_llr);
+        // printf("x[i] = %lf, E[info] = %lf\n", x[i], expectation(information, sample_snr));
     }
-    // printDoubleArray(y, sample);
-    for (int i = 0; i < sample; i++)
-    {
-        capacity[i] = 1 - log(1 + exp(-y[i]));
-    }
-    outputPythonPlotFile(x_dB, capacity, sample);
+    
+    outputPythonPlotFile(x_dB, capacity, sample_snr);
     
 
     return 0;
