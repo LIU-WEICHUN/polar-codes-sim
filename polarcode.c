@@ -235,7 +235,7 @@ void AWGNC(double* tx, int tx_size, double* rx, double snr){
     T = gsl_rng_default;
     r = gsl_rng_alloc (T);
     gsl_rng_set(r, time(0));
-    double sigma = sqrt(snr);
+    double sigma = sqrt(1/snr);
     for (int i = 0; i < tx_size; i++)
     {
         rx[i] = tx[i] + gsl_ran_gaussian(r, sigma);
