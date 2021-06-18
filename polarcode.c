@@ -1,10 +1,8 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
 #include <string.h>
-#include <time.h>
+#include "channel_coding.h"
 
 double LLRUpperHardwareFriendly(double llr_upper, double llr_lower);
 double LLRUpper(double llr_upper, double llr_lower);
@@ -13,11 +11,7 @@ double LLRLower(double llr_upper, double llr_lower, int u);
 void recursive_caluelation(int code_size,double* channel_llr, int* decoded_code, int* encode_assume);
 void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume);
 void PolarEncoder(int* code, int code_size, int* encoded);
-void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double SNR);
-void PrintCode(int* code, int code_size);
-void PrintLLR(double* llr, int channel_size);
-void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value);
-void shuffle(int *array, size_t n);
+void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value);
 
 int main(int argc, char const *argv[])
 {   
@@ -31,48 +25,20 @@ int main(int argc, char const *argv[])
     int frozen_index[code_size];
     int frozen_size;
     int frozen_value[code_size];
-    // for (int i = 0; i < code_size; i++)
-    // {
-    //     code[i] = atoi(argv[2+i]);
-    // }
-    for (int i = 0; i < code_size; i++)
-    {
-        code[i] = 0;
-    }
 
-    if (show == 1)
-    {
-        printf("code:");
-        PrintCode(code, code_size);
-    }
- 
+    setZeroCodeword(code, code_size);
     PolarEncoder(code, code_size, encode);
-    if (show == 1)
-    {   
-        printf("\n\nencode:");
-        PrintCode(encode, code_size);
-    }
-
-    //set frozen bits
-    for (int i = 0; i < code_size; i++)
-    {
-        frozen_index[i] = i;
-    }
+    setIndexArr(frozen_index ,0, code_size-1);
     shuffle(frozen_index, code_size);
     frozen_size = code_size/2;
-    for (int i = 0; i < code_size; i++)
-    {
-        frozen_value[i] = 1;
-    }
-    printf("frozen index:");
-    PrintCode(frozen_index, frozen_size);
-    SetFrozenBits(code, code_size, frozen_index, frozen_size, frozen_value);
+    setZeroCodeword(frozen_value, code_size);
+    SetFrozenBits2Code(code, code_size, frozen_index, frozen_size, frozen_value);
 
     Code2LLRWithSNR(encode, channel_llr, code_size, -1);
-    PrintLLR(channel_llr, code_size);
 
     SC_decoder(code_size, decoded, channel_llr, frozen_index, frozen_size, frozen_value, encode_assume);
     
+    //output result
     printf("decoded:");
     PrintCode(decoded, code_size);
 
@@ -95,10 +61,10 @@ double LLRUpper(double llr_upper, double llr_lower){
 }
 
 double LLRUpperMaxStar(double llr_upper, double llr_lower){
-    fmax(0, llr_lower+llr_upper) - fmax(llr_upper, llr_lower) + log(1 + exp(-fabs(llr_lower + llr_upper))) - log(1+exp(-abs(llr_upper-llr_lower)));
+    return fmax(0, llr_lower+llr_upper) - fmax(llr_upper, llr_lower) + log(1 + exp(-fabs(llr_lower + llr_upper))) - log(1 + exp(-fabs(llr_upper-llr_lower)));
 }
 
-void SetFrozenBits(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value){
+void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value){
     for (int i = 0; i < code_size; i++)
     {
         decoded[i] = -1;
@@ -168,8 +134,11 @@ void recursive_caluelation(int code_size, double* channel_llr, int* decoded_code
     double llr_subchannel[sub_channel_size];
     for (int i = 0; i < sub_channel_size; i++)
     {
-        llr_subchannel[i] = LLRUpper(channel_llr[i], channel_llr[i+sub_channel_size]);
+        llr_subchannel[i] = LLRUpperMaxStar(channel_llr[i], channel_llr[i+sub_channel_size]);
+        // llr_subchannel[i] = LLRUpper(channel_llr[i], channel_llr[i+sub_channel_size]);
+        // llr_subchannel[i] = LLRUpperHardwareFriendly(channel_llr[i], channel_llr[i+sub_channel_size]);
     }
+    
     // printf("Upper ");
     // PrintLLR(llr_subchannel, sub_channel_size);
     recursive_caluelation(sub_channel_size, llr_subchannel, decoded_code, encode_assume);
@@ -189,7 +158,7 @@ void recursive_caluelation(int code_size, double* channel_llr, int* decoded_code
 }
 
 void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume){
-    SetFrozenBits(decoded_code, code_size, frozen_index, frozen_size, frozen_value);
+    SetFrozenBits2Code(decoded_code, code_size, frozen_index, frozen_size, frozen_value);
     recursive_caluelation(code_size, channel_llr, decoded_code, encode_assume);
     return;
 }
@@ -207,105 +176,4 @@ void PolarEncoder(int* code, int code_size, int* encoded){
         encoded[i] = (encoded[i] + encoded[i+code_size/2])%2;
     }    
     return;
-}
-int mapping(int* encode ,int code_size,double* tx){
-    for (int i = 0; i < code_size; i++)
-    {
-        switch (encode[i])
-        {
-            case 0:
-                tx[i] = 1.0;
-                break;
-            case 1:
-                tx[i] = -1.0;
-                break;
-            default:
-                printf("error");
-                break;
-        }
-    }
-    return code_size;
-}
-void AWGNC(double* tx, int tx_size, double* rx, double snr){
-    const gsl_rng_type * T;
-    gsl_rng * r;
-  /* create a generator chosen by the
-     environment variable GSL_RNG_TYPE */
-    gsl_rng_env_setup();
-    T = gsl_rng_default;
-    r = gsl_rng_alloc (T);
-    gsl_rng_set(r, time(0));
-    double sigma = sqrt(1/snr);
-    for (int i = 0; i < tx_size; i++)
-    {
-        rx[i] = tx[i] + gsl_ran_gaussian(r, sigma);
-    }
-    return;
-    
-}
-void tx2LlrForBpsk(double* rx, int rx_size, double* channel_llr, double snr){
-    for (int i = 0; i < rx_size; i++)
-    {
-        channel_llr[i] = 2*rx[i]*snr;
-    }
-    return;
-    
-}
-
-void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr){
-    double tx[code_size];
-    int tx_size;
-    double rx[code_size];
-
-    if(snr < 0){
-        for (int i = 0; i < code_size; i++)
-        {  
-            switch (encode[i])
-            {
-            case 0:
-                channel_llr[i] = 10;
-                break;
-            case 1:
-                channel_llr[i] = -10;
-                break;
-            default:
-                printf("error");
-                break;
-            }   
-        }
-    }else
-    {
-        tx_size = mapping(encode , code_size, tx);
-        AWGNC(tx, tx_size, rx, snr);
-        tx2LlrForBpsk(rx, code_size, channel_llr, snr);
-    }
-    
-}
-void PrintCode(int* code, int code_size){
-    printf("\nthe %d bits code is:\n", code_size);
-    for (int i = 0; i < code_size; i++)
-    {
-        printf("%d ",code[i]);
-    }
-    printf("\n");
-    return;
-}
-
-/* Arrange the N elements of ARRAY in random order.
-   Only effective if N is much smaller than RAND_MAX;
-   if this may not be the case, use a better random
-   number generator. */
-void shuffle(int *array, size_t n)
-{
-    if (n > 1) 
-    {
-        size_t i;
-        for (i = 0; i < n - 1; i++) 
-        {
-          size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
-          int t = array[j];
-          array[j] = array[i];
-          array[i] = t;
-        }
-    }
 }
