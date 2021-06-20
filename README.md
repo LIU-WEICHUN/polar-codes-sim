@@ -1,8 +1,6 @@
 # polar-codes-sim
 
-* the oupout fig didn't fit the known capacity
-    * the expection is out of the log (DONE)
-    * ask boss if it correct
+
 
 ### code for generate llr exp :
 ```matlab
