@@ -119,6 +119,16 @@ double expectation(double* val_arr, int arr_size){
     }
     return sum;
 }
+void fprintPyArray(FILE* f, char* arr_name ,double* arr, int size){
+    fprintf(f, "%s ", arr_name);
+    fprintf(f, "= [");
+    fprintf(f, "%lf ", arr[0]);
+    for (int i = 1; i < size; i++)
+    {
+        fprintf(f, ",%lf ", arr[i]);
+    }
+    fprintf(f, "]\n");   
+}
 
 void outputPythonPlotFile(double* x, double* y, int size){
     FILE *f = fopen("plot.py", "w");
@@ -129,6 +139,7 @@ void outputPythonPlotFile(double* x, double* y, int size){
     }
 
     /* print some text */
+    /*
     fprintf(f, "SNRvec_dB = [");
     fprintf(f, "%lf ", x[0]);
     for (int i = 1; i < size; i++)
@@ -144,7 +155,9 @@ void outputPythonPlotFile(double* x, double* y, int size){
         fprintf(f, ",%lf ", y[i]);
     }
     fprintf(f, "]\n");    
-    
+    */
+    fprintPyArray(f, "SNRvec_dB", x, size);
+    fprintPyArray(f, "C", y, size);
     fprintf(f, "# plot and save fig\n");
     fprintf(f, "import matplotlib.pyplot as plt\n");
     fprintf(f, "plt.grid()\n");
