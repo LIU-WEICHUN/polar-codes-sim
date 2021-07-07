@@ -36,15 +36,17 @@ int mapping(int* encode ,int code_size,double* tx){
     }
     return code_size;
 }
-void AWGNC(double* tx, int tx_size, double* rx, double snr){
+void setRandom(gsl_rng * r){
     const gsl_rng_type * T;
-    gsl_rng * r;
   /* create a generator chosen by the
      environment variable GSL_RNG_TYPE */
     gsl_rng_env_setup();
     T = gsl_rng_default;
     r = gsl_rng_alloc (T);
     gsl_rng_set(r, time(0));
+}
+void AWGNC(double* tx, int tx_size, double* rx, double snr, gsl_rng * r){
+
     double sigma = sqrt(1/snr);
     for (int i = 0; i < tx_size; i++)
     {
@@ -62,7 +64,7 @@ void rx2LlrForBpsk(double* rx, int rx_size, double* channel_llr, double snr){
     
 }
 
-void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr){
+void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr, gsl_rng * r){
     double tx[code_size];
     int tx_size;
     double rx[code_size];
@@ -86,7 +88,7 @@ void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr
     }else
     {
         tx_size = mapping(encode , code_size, tx);
-        AWGNC(tx, tx_size, rx, snr);
+        AWGNC(tx, tx_size, rx, snr, r);
         rx2LlrForBpsk(rx, code_size, channel_llr, snr);
     }
     
