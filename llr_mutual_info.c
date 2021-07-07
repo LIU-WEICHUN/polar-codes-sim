@@ -138,24 +138,6 @@ void outputPythonPlotFile(double* x, double* y, int size){
         exit(1);
     }
 
-    /* print some text */
-    /*
-    fprintf(f, "SNRvec_dB = [");
-    fprintf(f, "%lf ", x[0]);
-    for (int i = 1; i < size; i++)
-    {
-        fprintf(f, ",%lf ", x[i]);
-    }
-    fprintf(f, "]\n");
-
-    fprintf(f, "C = [");
-    fprintf(f, "%lf ", y[0]);
-    for (int i = 1; i < size; i++)
-    {
-        fprintf(f, ",%lf ", y[i]);
-    }
-    fprintf(f, "]\n");    
-    */
     fprintPyArray(f, "SNRvec_dB", x, size);
     fprintPyArray(f, "C", y, size);
     fprintf(f, "# plot and save fig\n");
