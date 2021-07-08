@@ -86,6 +86,15 @@ int main(int argc, char const *argv[])
     setZeroCodeword(code, code_size);
     setZeroCodeword(decoded, code_size);
     PolarEncoder(code, code_size, encode);
+    gsl_rng * r;
+
+    const gsl_rng_type * T;
+  /* create a generator chosen by the
+     environment variable GSL_RNG_TYPE */
+    gsl_rng_env_setup();
+    T = gsl_rng_default;
+    r = gsl_rng_alloc (T);
+    gsl_rng_set(r, time(0));
     // setIndexArr(frozen_index ,0, code_size-1);
     // shuffle(frozen_index, code_size);
     // frozen_size = 0;
@@ -105,7 +114,7 @@ int main(int argc, char const *argv[])
         }
         for (int j = 0; j < sample_llr; j++)
         {
-            Code2LLRWithSNR(encode, channel_llr, code_size, x[i]);
+            Code2LLRWithSNR(encode, channel_llr, code_size, x[i], r);
             SC_decoder(code_size, decoded, channel_llr, frozen_index, frozen_size, frozen_value, encode_assume, decode_llr);
             for (int k = 0; k < code_size; k++)
             {
@@ -120,9 +129,9 @@ int main(int argc, char const *argv[])
         }
         fprintf(f, "# sample number is: %d\n", sample_llr);
         fprintf(f, "# snr is: %lf\n", x[i]);
-        fprintf(f, "%d", i);
+        fprintf(f, "a%d", i);
         fprintPyArray(f, "thSNR_capacity_channel", capacity_channel, code_size);
-        fprintf(f, "%d", i);
+        fprintf(f, "a%d", i);
         fprintPyArray(f, "thSNR_capacity_decode", capacity_decode, code_size);
     }
     fclose(f);
