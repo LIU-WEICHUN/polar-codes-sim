@@ -94,7 +94,7 @@ void Code2LLRWithSNR(int* encode, double* channel_llr, int code_size, double snr
     
 }
 void PrintCode(int* code, int code_size){
-    printf("\nthe %d bits code is:\n", code_size);
+    printf("the %d bits code is:\n", code_size);
     for (int i = 0; i < code_size; i++)
     {
         printf("%d ",code[i]);
