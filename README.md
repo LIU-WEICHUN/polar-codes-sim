@@ -1,6 +1,8 @@
 # polar-codes-sim
 
-
+## TODO
+* scl_snr.c
+    * looks alright, but didn't know why other PM are the same.
 
 ### code for generate llr exp :
 ```matlab
