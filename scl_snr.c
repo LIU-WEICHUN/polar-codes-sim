@@ -5,12 +5,11 @@
 #include "channel_coding.h"
 #include <unistd.h>
 #include <assert.h>
+#include "polar.h"
+#include "comm_smi.h"
 int L = 4;
 int message_size = 5;
-double LLRUpperHardwareFriendly(double llr_upper, double llr_lower);
-double LLRUpper(double llr_upper, double llr_lower);
-double LLRUpperMaxStar(double llr_upper, double llr_lower);
-double LLRLower(double llr_upper, double llr_lower, int u);
+
 struct path
 {
     int* code;
@@ -18,67 +17,6 @@ struct path
 };
 void recursive_caluelation(int code_size, double channel_llr[][L], int* decoded_code, double* decode_llr, int L, struct path* path_[2*L], int* path_len, int channel_index);
 void SCL_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, double* decode_llr);
-void PolarEncoder(int* code, int code_size, int* encoded);
-void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int unfrozen_size, int* frozen_value);
-void fprintPyArray(FILE* f, char* arr_name ,double* arr, int size){
-    fprintf(f, "%s ", arr_name);
-    fprintf(f, "= [");
-    fprintf(f, "%lf ", arr[0]);
-    for (int i = 1; i < size; i++)
-    {
-        fprintf(f, ",%lf ", arr[i]);
-    }
-    fprintf(f, "]\n");   
-}
-
-double mean(double* arr, int sample){
-    double sum = 0;
-    for (int i = 0; i < sample; i++)
-    {
-        sum += arr[i]/sample;
-    }
-    return sum;
-}
-
-void linspace(double* x ,double init, double fin, int N) {
-     double step = (fin - init) / (double)N;
-
-     x[0] = init; 
-
-     for (int i = 1; i < N; i++) {
-         x[i] = x[i - 1] + step;
-     }
-     x[N - 1] = fin;
-     return;
-}
-
-void dB2Linear(double* dB, double* linear, int arr_size){
-    for (int i = 0; i < arr_size; i++)
-    {
-        linear[i] = pow(10, dB[i]/10);
-    }
-    
-}
-void setAllCodewordTo(int var, int* code, int code_size)
-{
-    for (int i = 0; i < code_size; i++) 
-    {
-        code[i] = var;
-    }
-    return;
-}
-
-void setMessage2Code(int* message, int message_size, int* code,int code_size, int* unfrozen_index, int* frozen_value){
-    for (int i = 0; i < code_size; i++)
-    {
-        code[i] = frozen_value[i];
-    }
-    for (int i = 0; i < message_size; i++)
-    {
-        code[unfrozen_index[i]] = message[i];
-    } 
-    return;
-}
 
 int main(int argc, char const *argv[])
 {   
@@ -158,72 +96,6 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-void PrintLLR(double* llr, int channel_size){
-    printf("the llr is:\n");
-    for (int i = 0; i < channel_size; i++)
-    {
-        printf("%lf ", llr[i]);
-    }
-    printf("\n");
-}
-
-double LLRUpper(double llr_upper, double llr_lower){
-    return log((exp(llr_upper+llr_lower)+1)/(exp(llr_upper)+exp(llr_lower)));
-}
-
-double LLRUpperMaxStar(double llr_upper, double llr_lower){
-    return fmax(0, llr_lower+llr_upper) - fmax(llr_upper, llr_lower) + log(1 + exp(-fabs(llr_lower + llr_upper))) - log(1 + exp(-fabs(llr_upper-llr_lower)));
-}
-
-void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int unfrozen_size, int* frozen_value){
-    for (int i = 0; i < code_size; i++)
-    {
-        decoded[i] = frozen_value[i];
-    }
-    for (int i = 0; i < unfrozen_size; i++)
-    {
-        decoded[frozen_index[i]] = -1;
-    }  
-}
-
-double LLRUpperHardwareFriendly(double llr_upper, double llr_lower){
-    int signa = (llr_upper > 0 ? 1 : -1);
-    int signb = (llr_lower > 0 ? 1 : -1);
-    if (signa == signb)
-    {
-        return signa > 0 ? (llr_upper < llr_lower ? llr_upper : llr_lower) : (llr_upper > llr_lower ? -llr_upper : -llr_lower);
-    }else{
-        return signa > 0 ? (llr_upper < -llr_lower ? -llr_upper : llr_lower) : (-llr_upper < llr_lower ? llr_upper : -llr_lower);
-    }
-}
-
-double LLRLower(double llr_upper, double llr_lower, int u)
-{
-    switch (u)
-    {
-    case 0:
-        return llr_upper + llr_lower;
-        break;
-    
-    case 1:
-        return llr_lower - llr_upper;
-    
-    default:
-        printf("error about u, u = %d\n", u);
-        break;
-    }
-    return NAN;
-}
-
-int HardDecisionWithLLR(double llr){
-    if(llr >= 0){
-        return 0;
-    }else
-    {   
-        return 1;
-    }      
-}
-
 
 double newPM(double pm_old, double llr, int code){
     if (code == 1)
@@ -239,7 +111,6 @@ double newPM(double pm_old, double llr, int code){
     }  
 }
 
-
 void minSorter(struct path** path_0, struct path** path_1){
     if ((*path_0)->PM <= (*path_1)->PM)
     {   
@@ -252,7 +123,6 @@ void minSorter(struct path** path_0, struct path** path_1){
     }
     return;
 }
-
 
 void sortPM(struct path** path_, int path_len ,int L){
     int tmp[L];
@@ -465,17 +335,3 @@ void SCL_decoder(int code_size, int* decoded_code,double* channel_llr, int* unfr
     return;
 }
 
-void PolarEncoder(int* code, int code_size, int* encoded){
-    if(code_size == 1){
-        encoded[0] = code[0];
-        return;
-    }
-    PolarEncoder(code+code_size/2, code_size/2, encoded+code_size/2);
-    PolarEncoder(code, code_size/2, encoded);
-    
-    for (int i = 0; i < code_size/2; i++)
-    {
-        encoded[i] = (encoded[i] + encoded[i+code_size/2])%2;
-    }    
-    return;
-}

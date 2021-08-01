@@ -3,56 +3,12 @@
 #include<math.h>
 #include <string.h>
 #include "channel_coding.h"
+#include "polar.h"
+#include "comm_smi.h"
 
-double LLRUpperHardwareFriendly(double llr_upper, double llr_lower);
-double LLRUpper(double llr_upper, double llr_lower);
-double LLRUpperMaxStar(double llr_upper, double llr_lower);
-double LLRLower(double llr_upper, double llr_lower, int u);
+
 void recursive_caluelation(int code_size,double* channel_llr, int* decoded_code, int* encode_assume, double* decode_llr);
 void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* frozen_index,int frozen_size, int* frozen_value, int* encode_assume, double* decode_llr);
-void PolarEncoder(int* code, int code_size, int* encoded);
-void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value);
-void fprintPyArray(FILE* f, char* arr_name ,double* arr, int size){
-    fprintf(f, "%s ", arr_name);
-    fprintf(f, "= [");
-    fprintf(f, "%lf ", arr[0]);
-    for (int i = 1; i < size; i++)
-    {
-        fprintf(f, ",%lf ", arr[i]);
-    }
-    fprintf(f, "]\n");   
-}
-
-double mean(double* arr, int sample){
-    double sum = 0;
-    for (int i = 0; i < sample; i++)
-    {
-        sum += arr[i]/sample;
-    }
-    return sum;
-}
-
-void linspace(double* x ,double init, double fin, int N) {
-     double step = (fin - init) / (double)N;
-
-     x[0] = init; 
-
-     for (int i = 1; i < N; i++) {
-         x[i] = x[i - 1] + step;
-     }
-     x[N - 1] = fin;
-     return;
-}
-
-void dB2Linear(double* dB, double* linear, int arr_size){
-    for (int i = 0; i < arr_size; i++)
-    {
-        linear[i] = pow(10, dB[i]/10);
-    }
-    
-}
-
-
 
 int main(int argc, char const *argv[])
 {   
@@ -138,73 +94,6 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-void PrintLLR(double* llr, int channel_size){
-    printf("the llr is:\n");
-    for (int i = 0; i < channel_size; i++)
-    {
-        printf("%lf ", llr[i]);
-    }
-    printf("\n");
-}
-
-double LLRUpper(double llr_upper, double llr_lower){
-    return log((exp(llr_upper+llr_lower)+1)/(exp(llr_upper)+exp(llr_lower)));
-}
-
-double LLRUpperMaxStar(double llr_upper, double llr_lower){
-    return fmax(0, llr_lower+llr_upper) - fmax(llr_upper, llr_lower) + log(1 + exp(-fabs(llr_lower + llr_upper))) - log(1 + exp(-fabs(llr_upper-llr_lower)));
-}
-
-void SetFrozenBits2Code(int* decoded, int code_size, int* frozen_index, int frozen_size, int* frozen_value){
-    for (int i = 0; i < code_size; i++)
-    {
-        decoded[i] = -1;
-    }
-    for (int i = 0; i < frozen_size; i++)
-    {
-        decoded[frozen_index[i]] = frozen_value[i];
-    }  
-}
-
-double LLRUpperHardwareFriendly(double llr_upper, double llr_lower){
-    int signa = (llr_upper > 0 ? 1 : -1);
-    int signb = (llr_lower > 0 ? 1 : -1);
-    if (signa == signb)
-    {
-        return signa > 0 ? (llr_upper < llr_lower ? llr_upper : llr_lower) : (llr_upper > llr_lower ? -llr_upper : -llr_lower);
-    }else{
-        return signa > 0 ? (llr_upper < -llr_lower ? -llr_upper : llr_lower) : (-llr_upper < llr_lower ? llr_upper : -llr_lower);
-    }
-}
-
-double LLRLower(double llr_upper, double llr_lower, int u)
-{
-    switch (u)
-    {
-    case 0:
-        return llr_upper + llr_lower;
-        break;
-    
-    case 1:
-        return llr_lower - llr_upper;
-    
-    default:
-        printf("error about u");
-        break;
-    }
-    return NAN;
-}
-
-int HardDecisionWithLLR(double llr){
-    if(llr >= 0){
-        return 0;
-    }else
-    {   
-        return 1;
-    }      
-}
-
-
 void recursive_caluelation(int code_size, double* channel_llr, int* decoded_code, int* encode_assume, double* decode_llr){
     int sub_channel_size = code_size/2;
     if(code_size == 1)
@@ -248,17 +137,4 @@ void SC_decoder(int code_size, int* decoded_code,double* channel_llr, int* froze
     return;
 }
 
-void PolarEncoder(int* code, int code_size, int* encoded){
-    if(code_size == 1){
-        encoded[0] = code[0];
-        return;
-    }
-    PolarEncoder(code+code_size/2, code_size/2, encoded+code_size/2);
-    PolarEncoder(code, code_size/2, encoded);
-    
-    for (int i = 0; i < code_size/2; i++)
-    {
-        encoded[i] = (encoded[i] + encoded[i+code_size/2])%2;
-    }    
-    return;
-}
+
